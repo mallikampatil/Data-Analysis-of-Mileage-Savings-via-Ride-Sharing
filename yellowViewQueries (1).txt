@@ -1,0 +1,80 @@
+USE yellowtripdatajan2015;
+
+CREATE VIEW YDataSpeedTimeJan AS
+SELECT  RIGHT(sec_to_time((TIME_TO_SEC(y1.tpep_dropoff_datetime) - TIME_TO_SEC(y1.tpep_pickup_datetime))),5)  AS Trip_time_in_minutes,
+		(y1.trip_distance / ((TIME_TO_SEC(y1.tpep_dropoff_datetime) - TIME_TO_SEC(y1.tpep_pickup_datetime)) / 3600) ) AS Trip_Speed,
+        y1.passenger_count, y1.trip_distance, ST_Distance_Sphere( 
+ point(pickup_longitude, pickup_latitude),
+ point(dropoff_longitude, dropoff_latitude)
+ ) * .000621371192 AS P2PDistance,
+        y1.fare_amount, y1.total_amount, y1.tpep_pickup_datetime, y1.tpep_dropoff_datetime,
+        y1.pickup_longitude, y1.pickup_latitude, y1.dropoff_Longitude, y1.dropoff_Latitude
+FROM yellowtripdatajan y1
+WHERE y1.passenger_count < 3
+
+*****************************************
+
+CREATE VIEW YellowTaxiViewJan AS
+SELECT A.Trip_time_in_minutes ,B.Trip_time_in_minutes AS Second_trip_time, A.Trip_distance, B.Trip_distance AS Second_trip_distance, A.Trip_speed, B.Trip_speed AS Second_speed ,
+	   A.passenger_count, B.passenger_count AS Second_trip_passenger, A.tpep_pickup_datetime, B.tpep_pickup_datetime AS Second_pickup, A.tpep_dropoff_datetime, B.tpep_dropoff_datetime AS Second_dropoff,
+       (A.Trip_speed + B.Trip_speed)/2 AS Average_speed, 
+(ST_Distance_Sphere( 
+ point(A.pickup_longitude, A.pickup_latitude),
+ point(B.pickup_longitude, B.pickup_latitude)
+ ) * .000621371192) / ((A.Trip_speed + B.Trip_speed)/2) * 60 AS Time_o1_to_o2,
+ ST_Distance_Sphere( 
+ point(A.pickup_longitude, A.pickup_latitude),
+ point(B.dropoff_longitude, B.dropoff_latitude)
+ ) * .000621371192 AS o1_to_d2Dist,
+ ST_Distance_Sphere( 
+ point(A.pickup_longitude, A.pickup_latitude),
+ point(A.dropoff_longitude, A.dropoff_latitude)
+ ) * .000621371192 AS o1_to_d1Dist,
+ ST_Distance_Sphere( 
+ point(A.pickup_longitude, A.pickup_latitude),
+ point(B.pickup_longitude, B.pickup_latitude)
+ ) * .000621371192 AS o1_to_o2Dist,
+ ST_Distance_Sphere( 
+ point(B.pickup_longitude, B.pickup_latitude),
+ point(A.pickup_longitude, A.pickup_latitude)
+ ) * .000621371192 AS o2_to_o1Dist,
+ ST_Distance_Sphere( 
+ point(B.pickup_longitude, B.pickup_latitude),
+ point(A.dropoff_longitude, A.dropoff_latitude)
+ ) * .000621371192 AS o2_to_d1Dist,
+ ST_Distance_Sphere( 
+ point(B.pickup_longitude, B.pickup_latitude),
+ point(B.dropoff_longitude, B.dropoff_latitude)
+ ) * .000621371192 AS o2_to_d2Dist,
+ ST_Distance_Sphere( 
+ point(A.dropoff_longitude, A.dropoff_latitude),
+ point(B.dropoff_longitude, B.dropoff_latitude)
+ ) * .000621371192 AS d1_to_d2Dist,
+ ST_Distance_Sphere( 
+ point(B.dropoff_longitude, B.dropoff_latitude),
+ point(A.dropoff_longitude, A.dropoff_latitude)
+ ) * .000621371192 AS d2_to_d1Dist
+FROM ydataspeedtimejan AS B
+	CROSS JOIN
+    ydataspeedtimejan AS A
+WHERE B.Passenger_count + A.Passenger_count < 4    
+
+*****************************************************
+
+CREATE VIEW YELLOWallImportantData AS
+SELECT *, (o1_to_d2Dist / Average_speed) * 60 AS Time_o1_to_d2,
+	 (o1_to_d1Dist / Average_speed) * 60 AS Time_o1_to_d1,
+     (o2_to_o1Dist / Average_speed) * 60 AS Time_o2_to_o1,
+     (o2_to_d1Dist / Average_speed) * 60 AS Time_o2_to_d1,
+     (o2_to_d2Dist / Average_speed) * 60 AS Time_o2_to_d2,
+     (d1_to_d2Dist / Average_speed) * 60 AS Time_d1_to_d2,
+     (d2_to_d1Dist / Average_speed) * 60 AS Time_d2_to_d1,
+     (o1_to_o2Dist+o2_to_d1Dist+d1_to_d2Dist) AS Sequence1Dist,
+     (o1_to_o2Dist+ o2_to_d2Dist + d2_to_d1Dist) AS Sequence2Dist,
+     (o2_to_o1Dist + o1_to_d1Dist + d1_to_d2Dist) AS Sequence3Dist,
+     (o2_to_o1Dist + o1_to_d2Dist + d2_to_d1Dist) AS Sequence4Dist,
+     (o1_to_d1Dist + o2_to_d2Dist) AS totalDistanceP2P
+FROM yellowtaxiviewjan;
+
+***************************************************************
+

@@ -1,0 +1,78 @@
+USE yellowtripdatajan2015;
+
+-- -- CREATE OR REPLACE VIEW GDataSpeedTimeJan AS
+-- SELECT  RIGHT(sec_to_time((TIME_TO_SEC(Lpep_dropoff_datetime) - TIME_TO_SEC(lpep_pickup_datetime))),5)  AS Trip_time_in_minutes,
+-- 		(Trip_distance / ((TIME_TO_SEC(Lpep_dropoff_datetime) - TIME_TO_SEC(lpep_pickup_datetime)) / 3600) ) AS Trip_Speed,
+--         Passenger_count, Trip_distance, ST_Distance_Sphere( 
+--  point(Pickup_longitude, Pickup_latitude), 
+--  point(Dropoff_longitude, Dropoff_latitude)
+--  ) * .000621371192 AS P2PDistance, Fare_amount, Total_amount, lpep_pickup_datetime, Lpep_dropoff_datetime,
+--         Pickup_longitude, Pickup_latitude, Dropoff_Longitude, Dropoff_Latitude
+-- FROM greentripdatafeb 
+-- WHERE Passenger_count < 4
+
+-- ***********************************
+
+-- CREATE VIEW GreenTaxiViewJan AS
+-- SELECT A.Trip_time_in_minutes ,B.Trip_time_in_minutes AS Second_trip_time, A.Trip_distance, B.Trip_distance AS Second_trip_distance, A.Trip_speed, B.Trip_speed AS Second_speed ,
+-- 	   A.Ipep_pickup_datetime, B.Ipep_pickup_datetime AS Second_pickup, A.Lpep_dropoff_datetime, B.Lpep_dropoff_datetime AS Second_dropoff,
+--        (A.Trip_speed + B.Trip_speed)/2 AS Average_speed,
+-- (ST_Distance_Sphere( 
+--  point(A.Pickup_longitude, A.Pickup_latitude),
+--  point(B.Pickup_longitude, B.Pickup_latitude)
+--  ) * .000621371192) / ((A.Trip_speed + B.Trip_speed)/2) * 60 AS Time_o1_to_o2,
+--  ST_Distance_Sphere( 
+--  point(A.Pickup_longitude, A.Pickup_latitude),
+--  point(B.Dropoff_longitude, B.Dropoff_latitude)
+--  ) * .000621371192 AS o1_to_d2Dist,
+--  ST_Distance_Sphere( 
+--  point(A.Pickup_longitude, A.Pickup_latitude),
+--  point(A.Dropoff_longitude, A.Dropoff_latitude)
+--  ) * .000621371192 AS o1_to_d1Dist,
+--  ST_Distance_Sphere( 
+--  point(A.Pickup_longitude, A.Pickup_latitude),
+--  point(B.Pickup_longitude, B.Pickup_latitude)
+--  ) * .000621371192 AS o1_to_o2Dist,
+--  ST_Distance_Sphere( 
+--  point(B.Pickup_longitude, B.Pickup_latitude),
+--  point(A.Pickup_longitude, A.Pickup_latitude)
+--  ) * .000621371192 AS o2_to_o1Dist,
+--  ST_Distance_Sphere( 
+--  point(B.Pickup_longitude, B.Pickup_latitude),
+--  point(A.Dropoff_longitude, A.Dropoff_latitude)
+--  ) * .000621371192 AS o2_to_d1Dist,
+--  ST_Distance_Sphere( 
+--  point(B.Pickup_longitude, B.Pickup_latitude),
+--  point(B.Dropoff_longitude, B.Dropoff_latitude)
+--  ) * .000621371192 AS o2_to_d2Dist,
+--  ST_Distance_Sphere( 
+--  point(A.Dropoff_longitude, A.Dropoff_latitude),
+--  point(B.Dropoff_longitude, B.Dropoff_latitude)
+--  ) * .000621371192 AS d1_to_d2Dist,
+--  ST_Distance_Sphere( 
+--  point(B.Dropoff_longitude, B.Dropoff_latitude),
+--  point(A.Dropoff_longitude, A.Dropoff_latitude)
+--  ) * .000621371192 AS d2_to_d1Dist
+-- FROM gdataspeedtimejan AS B
+-- 	CROSS JOIN
+--     gdataspeedtimejan AS A
+    
+-- *********************************
+
+
+CREATE VIEW allImportantData AS
+SELECT *, (o1_to_d2Dist / Average_speed) * 60 AS Time_o1_to_d2,
+	 (o1_to_d1Dist / Average_speed) * 60 AS Time_o1_to_d1,
+     (o2_to_o1Dist / Average_speed) * 60 AS Time_o2_to_o1,
+     (o2_to_d1Dist / Average_speed) * 60 AS Time_o2_to_d1,
+     (o2_to_d2Dist / Average_speed) * 60 AS Time_o2_to_d2,
+     (d1_to_d2Dist / Average_speed) * 60 AS Time_d1_to_d2,
+     (d2_to_d1Dist / Average_speed) * 60 AS Time_d2_to_d1,
+     (o1_to_o2Dist+o2_to_d1Dist+d1_to_d2Dist) AS Sequence1Dist,
+     (o1_to_o2Dist+ o2_to_d2Dist + d2_to_d1Dist) AS Sequence2Dist,
+     (o2_to_o1Dist + o1_to_d1Dist + d1_to_d2Dist) AS Sequence3Dist,
+     (o2_to_o1Dist + o1_to_d2Dist + d2_to_d1Dist) AS Sequence4Dist,
+     (o1_to_d1Dist + o2_to_d2Dist) AS totalDistanceP2P
+FROM greentaxiviewjan;    
+
+
